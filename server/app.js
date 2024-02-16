@@ -23,6 +23,7 @@ app.get('/', (req, res) => {
     res.send("welcome");
 })
 
+
 app.post('/api/register', async (req, res, next) => {
     try {
         const { fullName, email, password } = req.body;
