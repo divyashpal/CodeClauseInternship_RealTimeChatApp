@@ -1,6 +1,7 @@
 const express = require('express');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const cors = require('cors');
 
 
 //connect DB
@@ -16,6 +17,7 @@ const Messages = require('./models/Messages');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors())
 
 const port = process.env.PORT || 8000;
 
@@ -78,10 +80,8 @@ app.post('/api/login', async (req, res, next) => {
                             $set: { token }
                         })
                         user.save()
-                        next()
+                        return res.status(200).json({ user: { id: user._id, email: user.email, fullName: user.fullName }, token: token })
                     });
-
-                    res.status(200).json({ user: { email: user.email, fullName: user.fullName }, token: user.token })
                 }
             }
 
@@ -98,23 +98,22 @@ app.post('/api/conversation', async (req, res) => {
         await newConversation.save();
         res.status(200).send("Conversation created successfully")
     } catch (error) {
-        console.log(error, 'Error')
+        console.log('Post Error',error)
     }
 })
 
-app.get('/api/conversation/:userId', async (req, res) => {
+app.get('/api/conversations/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
         const conversations = await Conversations.find({ members: { $in: [userId] } });
         const conversationUSerData = Promise.all(conversations.map(async (conversation) => {
             const receiverId = conversation.members.find((member) => member != userId);
             const user = await Users.findById(receiverId);
-            return { user: { email: user.email, fullName: user.fullName }, conversationId: conversation._id }
+            return { user: { receiverId: user._id, email: user.email, fullName: user.fullName }, conversationId: conversation._id }
         }))
-        res.status(200).json(await conversationUSerData)
+        res.status(200).json(await conversationUSerData) 
     } catch (error) {
-        console.log(error, 'Error')
-
+        console.log('Get Error',error)
     }
 })
 
@@ -124,7 +123,7 @@ app.post('/api/message', async (req, res) => {
         if (!senderId || !message) {
             return res.status(400).send("Please fill all required fields")
         }
-        if (!conversationId && receiverId) {
+        if (conversationId === 'new' && receiverId) {
             const newConversation = new Conversations({ members: [senderId, receiverId] });
             await newConversation.save();
             const newMessage = new Messages({ conversationId: newConversation._id, senderId, message });
@@ -136,9 +135,8 @@ app.post('/api/message', async (req, res) => {
         const newMessage = new Messages({ conversationId, senderId, message });
         await newMessage.save();
         res.status(200).send('Message sent succesfully');
-
     } catch (error) {
-        console.log(error, 'Error')
+        console.log('Post Error',error)
 
     }
 
@@ -153,10 +151,9 @@ app.get('/api/message/:conversationId', async (req, res) => {
         const messages = await Messages.find({ conversationId });
         const messageUserData = Promise.all(messages.map(async (message) => {
             const user = await Users.findById(message.senderId);
-            return { user: { email: user.email, fullName: user.fullName }, message: message.message }
+            return { user: { id: user._id, email: user.email, fullName: user.fullName }, message: message.message }
         }));
         res.status(200).json(await messageUserData);
-
     } catch (error) {
         console.log(error, 'Error')
     }
