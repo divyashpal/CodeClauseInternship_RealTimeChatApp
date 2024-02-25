@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Avatar from '../../assets/avatar-svgrepo-com.svg'
 import Input from '../../components/input'
-
+import { io } from 'socket.io-client'
 
 const Dashboard = () => {
 
@@ -9,11 +9,28 @@ const Dashboard = () => {
     const [conversations, setConversations] = useState([])
     const [messages, setMessages] = useState({})
     const [users, setUsers] = useState([])
+    const [socket, setSocket] = useState(null)
     const [message, setMessage] = useState('')
-    console.log('user:>>', user);
-    console.log('conversations:>>', conversations);
-    console.log('messages:>>', messages);
-    console.log('users:>>', users);
+
+    console.log('messages', messages);
+
+    useEffect(() => {
+        setSocket(io('http://localhost:8080'))
+    }, [])
+
+    useEffect(() => {
+        socket?.emit('addUser', user?.id)
+        socket?.on('getUsers', users => {
+            console.log("activeUsers:>>", users);
+        })
+        socket?.on('getMessage', data => {
+            console.log('data:>>', data);
+            setMessage(prev => ({
+                ...prev,
+                messages: [...prev.message, { user: data.users, message: data.message }]
+            }))
+        })
+    }, [socket])
 
     useEffect(() => {
         const loggInUser = JSON.parse(localStorage.getItem('user:detail'));
@@ -58,6 +75,12 @@ const Dashboard = () => {
     }
 
     const sendMessage = async (e) => {
+        socket?.emit('sendMessage', {
+            senderId: user?.id,
+            receiverId: message?.receiver?.receiverId,
+            message,
+            conversationId: message?.conversationId
+        })
         const res = await fetch(`http://localhost:8000/api/message`, {
             method: 'POST',
             headers: {
