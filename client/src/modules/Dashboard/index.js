@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Avatar from '../../assets/avatar-svgrepo-com.svg'
 import Input from '../../components/input'
 import { io } from 'socket.io-client'
@@ -8,9 +8,11 @@ const Dashboard = () => {
     const [user, setUser] = useState(JSON.parse(localStorage.getItem('user:detail')))
     const [conversations, setConversations] = useState([])
     const [messages, setMessages] = useState({})
+    const [message, setMessage] = useState('')
     const [users, setUsers] = useState([])
     const [socket, setSocket] = useState(null)
-    const [message, setMessage] = useState('')
+    const messageRef = useRef(null)
+
 
     console.log('messages', messages);
 
@@ -31,6 +33,10 @@ const Dashboard = () => {
             }))
         })
     }, [socket])
+
+    useEffect(() => {
+        messageRef?.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages?.messages])
 
     useEffect(() => {
         const loggInUser = JSON.parse(localStorage.getItem('user:detail'));
@@ -100,7 +106,7 @@ const Dashboard = () => {
 
     return (
         <div className=' w-screen flex'>
-            <div className='w-[25%] h-screen bg-secondary'>
+            <div className='w-[25%] h-screen bg-secondary overflow-scroll'>
                 <div className='flex items-center my-8 mx-14'>
                     <div className='border border-primary p-[2px] rounded-full'><img src={Avatar} width={75} height={75} className='rounded-full' /></div>
                     <div className='ml-8'>
@@ -163,8 +169,11 @@ const Dashboard = () => {
                             messages?.messages?.length > 0 ?
                                 messages.messages.map(({ message, user: { id } = {} }) => {
                                     return (
-                                        <div className={`max-w-[40%] rounded-b-xl   p-4 mb-6  
+                                        <>
+                                            <div className={`max-w-[40%] rounded-b-xl   p-4 mb-6  
                                         ${id === user?.id ? 'bg-primary rounded-tl-xl text-white ml-auto' : ' bg-secondary rounded-tr-xl'}`}>{message}</div>
+                                            <div ref={messageRef}></div>
+                                        </>
                                     )
                                 }) : <div className='text-center text-lg font-semibold mt-24'>No message or No Conversation Selected</div>
                         }
@@ -193,7 +202,7 @@ const Dashboard = () => {
                 }
             </div>
 
-            <div className='w-[25%] h-screen bg-light px-8 py-16'>
+            <div className='w-[25%] h-screen bg-light px-8 py-16 overflow-scroll'>
                 <div className='text-primary text-lg'>People</div>
                 <div >
                     {
